@@ -9,13 +9,15 @@ import mongoose from 'mongoose';
 import authRoutes from './routes/auth.js';
 import courseRoutes from './routes/course.js';
 
+const PORT = process.env.PORT || 3030;
 const app = express();
 
 // db
 mongoose
     .connect(process.env.DATABASE_MONGODB_ATLAS_URI)
     .then(() => {
-        app.listen(8000, () => console.log('Server running in port 8000'));
+        // app.listen(8000, () => console.log('Server running in port 8000'));
+        app.listen(PORT, () => console.log(`server started on port ${PORT}`));
         console.log('db_connected');
     })
     .catch((err) => console.log(err));
