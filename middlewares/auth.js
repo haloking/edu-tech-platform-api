@@ -1,10 +1,11 @@
+import 'dotenv/config';
 import jwt from 'jsonwebtoken';
 import * as config from '../config.js';
 
 export const requireSignin = (req, res, next) => {
     // console.log("__REQ_HEADERS__", req.headers);
     try {
-        const decoded = jwt.verify(req.headers.authorization, config.JWT_SECRET);
+        const decoded = jwt.verify(req.headers.authorization, process.env.JWT_SECRET);
         // console.log("DECODED => ", decoded);
         req.user = decoded;
         next();
