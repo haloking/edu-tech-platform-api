@@ -13,8 +13,11 @@ const app = express();
 
 // db
 mongoose
-    .connect(process.env.DATABASE)
-    .then(() => console.log('db_connected'))
+    .connect(process.env.DATABASE_MONGODB_ATLAS_URI)
+    .then(() => {
+        app.listen(8000, () => console.log('Server running in port 8000'));
+        console.log('db_connected');
+    })
     .catch((err) => console.log(err));
 
 // middlewares
@@ -29,5 +32,3 @@ app.use(express.json());
 // apply as middleware
 app.use('/', authRoutes);
 app.use('/', courseRoutes);
-
-app.listen(8000, () => console.log('Server running in port 8000'));
