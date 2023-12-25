@@ -27,7 +27,7 @@ app.use(express.urlencoded());
 app.use(express.json());
 
 // apply as middleware
-app.use('/api', authRoutes);
-app.use('/api', courseRoutes);
+app.use('/', authRoutes);
+app.use('/', courseRoutes);
 
 app.listen(8000, () => console.log('Server running in port 8000'));
