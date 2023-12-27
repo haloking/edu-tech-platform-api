@@ -247,7 +247,8 @@ export const uploadFileHtml = (req, res) => {
                         } else if (line.includes('h4')) {
                             const tempArray = line.replaceAll('>', '<').split(/</);
                             fileName = tempArray[2];
-                            fileName = fileName.replaceAll(':', '');
+                            console.log('filename:', fileName);
+                            fileName = fileName.replaceAll(':', '').replaceAll(',', '');
                         }
                     });
                     fs.writeFile(`public\\uploads\\${fileName}.txt`, strTapescript, (err) => {
@@ -385,7 +386,7 @@ export const update = async (req, res) => {
         console.log('curriculumsData:', req.body.objs[1]);
 
         const courseData = req.body.objs[0];
-        const { photos, curriculums, title, description, objective, price, type } = courseData;
+        const { photos, title } = courseData;
         const curriculumsData = req.body.objs[1];
 
         const courseDb = await Course.findById(courseData._id);
@@ -414,16 +415,61 @@ export const update = async (req, res) => {
                 return res.json({ error: 'Title is required' });
             }
 
-            // get existing array of curriculums in course from database
-            const curriculums = courseDb.curriculums;
+            // get existing array of curriculums in course from database, in term of ObjectID
+            const existingCurriculums = courseDb.curriculums;
+            console.log('existing curriculums: ', existingCurriculums);
 
+            // get updated array of curriculums, in term of _id, not including new curriculum which will be created
+            const updatedCurriculums = [];
+            curriculumsData?.map((curriculum) => {
+                if (curriculum._id) {
+                    updatedCurriculums.push(curriculum._id);
+                }
+            });
+            console.log('updated curriculums: ', updatedCurriculums);
+
+            // delete curriculums and lessons inside it
+            existingCurriculums?.map(async (_id) => {
+                if (!updatedCurriculums.includes(_id.toString())) {
+                    console.log('i am here:', _id.toString());
+
+                    const curriculumDb = await Curriculum.findById(_id);
+                    await Lesson.deleteMany({ _id: curriculumDb.lessons });
+                    console.log('many related lessons deleted');
+
+                    await Curriculum.findByIdAndDelete(_id);
+                    console.log('deleted curriculum:', _id);
+                }
+            });
+
+            // update or add new curriculums
             curriculumsData?.map(async (curriculum) => {
                 // if the curriculum is already in database, then update
                 if (curriculum._id) {
-                    // get array of lessons which already in curriculum from database
-                    const curriculumDb = await Curriculum.findById(curriculum._id);
-                    const lessons = curriculumDb.lessons;
+                    console.log('i am here:', curriculum._id);
 
+                    // get existing array of lessons which already in curriculum from database, if terms of ObjectID
+                    const curriculumDb = await Curriculum.findById(curriculum._id);
+                    const existingLessons = curriculumDb.lessons;
+                    console.log(`existing lessons of ${curriculum._id}:`, existingLessons);
+
+                    // get updated array of lessons , if terms of _id
+                    var updatedLessons = [];
+                    curriculum?.lessons?.map(async (lesson) => {
+                        if (lesson._id) {
+                            updatedLessons.push(lesson._id);
+                        }
+                    });
+
+                    // delete lessons
+                    existingLessons?.map(async (_id) => {
+                        if (!updatedLessons.includes(_id.toString())) {
+                            await Lesson.findByIdAndDelete(_id);
+                            console.log('deleted lesson:', _id);
+                        }
+                    });
+
+                    // update or add new lesson
                     curriculum?.lessons?.map(async (lesson, index) => {
                         // if the lesson is already in database, then update
                         if (lesson._id) {
@@ -435,10 +481,11 @@ export const update = async (req, res) => {
                             }
                         } else
                             try {
+                                // if the lesson is new then create new lesson
                                 const lessonDb = new Lesson({ ...lesson, postedBy: req.user._id });
 
                                 const newLessonId = lessonDb._id;
-                                lessons.push(newLessonId);
+                                updatedLessons.push(newLessonId);
 
                                 lessonDb.save();
 
@@ -454,7 +501,7 @@ export const update = async (req, res) => {
                     try {
                         const curriculumDb = await Curriculum.findByIdAndUpdate(curriculum._id, {
                             ...curriculum,
-                            lessons: lessons,
+                            lessons: updatedLessons,
                         });
                     } catch (err) {
                         console.log(err);
@@ -488,7 +535,7 @@ export const update = async (req, res) => {
                             postedBy: req.user._id,
                         });
                         const newCurriculumId = curriculumDb._id;
-                        curriculums.push(newCurriculumId);
+                        updatedCurriculums.push(newCurriculumId);
                         curriculumDb.save();
 
                         // console.log(newCurriculumId);
@@ -501,7 +548,7 @@ export const update = async (req, res) => {
             });
 
             try {
-                await courseDb.updateOne({ ...courseData, curriculums: curriculums });
+                await courseDb.updateOne({ ...courseData, curriculums: updatedCurriculums });
             } catch (err) {
                 console.log(err);
                 res.json({ error: 'Can not update course!' });
